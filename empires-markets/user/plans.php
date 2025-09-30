@@ -263,11 +263,17 @@ $csrf_token = generate_csrf_token();
                     
                     <div class="plan-details">
                         <h4><?php echo htmlspecialchars($user_current_plan['name']); ?> - Level <?php echo (int)$user_current_plan['level']; ?></h4>
-                        <p><strong>Investment Range:</strong> <?php echo format_currency($user_current_plan['min_amount']); ?> - <?php echo format_currency($user_current_plan['max_amount']); ?></p>
-                        <p><strong>Max Leverage:</strong> x<?php echo htmlspecialchars($user_current_plan['max_leverage']); ?></p>
-                        <p><strong>Commission Rate:</strong> <?php echo htmlspecialchars($user_current_plan['commission_rate']); ?>%</p>
+                        <ul class="plan-features" style="list-style: none; padding: 0;">
+                            <li><strong>Investment Range:</strong> <?php echo format_currency($user_current_plan['min_amount']); ?> - <?php echo $user_current_plan['max_amount'] ? format_currency($user_current_plan['max_amount']) : 'Unlimited'; ?></li>
+                            <li><strong>Max Leverage:</strong> 1:<?php echo htmlspecialchars($user_current_plan['max_leverage']); ?></li>
+                            <li><strong>Instruments:</strong> Up to <?php echo htmlspecialchars($user_current_plan['instruments_count']); ?></li>
+                            <li><strong>Support:</strong> <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $user_current_plan['support_level']))); ?></li>
+                            <?php if ($user_current_plan['analysis_access']): ?><li><i class="fas fa-check-circle" style="color: #27ae60;"></i> Advanced Analysis</li><?php endif; ?>
+                            <?php if ($user_current_plan['copy_trading_access']): ?><li><i class="fas fa-check-circle" style="color: #27ae60;"></i> Copy Trading</li><?php endif; ?>
+                            <?php if ($user_current_plan['api_access']): ?><li><i class="fas fa-check-circle" style="color: #27ae60;"></i> API Access</li><?php endif; ?>
+                        </ul>
                         <?php if ($current_user['plan_subscribed_at']): ?>
-                            <p><strong>Subscribed:</strong> <?php echo date('M j, Y g:i A', strtotime($current_user['plan_subscribed_at'])); ?></p>
+                            <p style="margin-top: 10px;"><strong>Subscribed:</strong> <?php echo date('M j, Y g:i A', strtotime($current_user['plan_subscribed_at'])); ?></p>
                         <?php endif; ?>
                     </div>
                     
@@ -300,23 +306,15 @@ $csrf_token = generate_csrf_token();
                                 <span class="plan-level <?php echo $is_current_plan ? 'current' : ''; ?>">Level <?php echo (int)$plan['level']; ?></span>
                             </div>
                             <div class="plan-body">
-                                <p><strong>Min:</strong> <?php echo format_currency($plan['min_amount']); ?></p>
-                                <p><strong>Max:</strong> <?php echo format_currency($plan['max_amount']); ?></p>
-                                <p><strong>Max Leverage:</strong> x<?php echo htmlspecialchars($plan['max_leverage']); ?></p>
-                                <p><strong>Commission:</strong> <?php echo htmlspecialchars($plan['commission_rate']); ?>%</p>
-                                <p><strong>Withdrawal Limits:</strong><br>
-                                    Daily: <?php echo $plan['withdrawal_limit_daily'] ? format_currency($plan['withdrawal_limit_daily']) : 'No limit'; ?><br>
-                                    Monthly: <?php echo $plan['withdrawal_limit_monthly'] ? format_currency($plan['withdrawal_limit_monthly']) : 'No limit'; ?>
-                                </p>
+                                <p><strong>Investment:</strong> <?php echo format_currency($plan['min_amount']); ?> - <?php echo $plan['max_amount'] ? format_currency($plan['max_amount']) : 'Unlimited'; ?></p>
                                 <ul class="plan-features">
-                                    <?php if (!empty($plan['features'])): ?>
-                                        <?php foreach (explode(',', $plan['features']) as $feat): ?>
-                                            <li><?php echo htmlspecialchars(trim($feat)); ?></li>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                    <?php if ($plan['copy_trading_enabled']): ?><li>Copy Trading Enabled</li><?php endif; ?>
-                                    <?php if ($plan['auto_trading_enabled']): ?><li>Auto Trading Enabled</li><?php endif; ?>
-                                    <?php if ($plan['priority_support']): ?><li>Priority Support</li><?php endif; ?>
+                                    <li><strong>Max Leverage:</strong> 1:<?php echo htmlspecialchars($plan['max_leverage']); ?></li>
+                                    <li><strong>Instruments:</strong> Up to <?php echo htmlspecialchars($plan['instruments_count']); ?></li>
+                                    <li><strong>Spread Reduction:</strong> <?php echo htmlspecialchars($plan['spread_reduction'] * 100); ?>%</li>
+                                    <li><strong>Support:</strong> <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $plan['support_level']))); ?></li>
+                                    <?php if ($plan['analysis_access']): ?><li>Advanced Analysis Tools</li><?php endif; ?>
+                                    <?php if ($plan['copy_trading_access']): ?><li>Copy Trading Access</li><?php endif; ?>
+                                    <?php if ($plan['api_access']): ?><li>API Access</li><?php endif; ?>
                                 </ul>
                             </div>
                             
