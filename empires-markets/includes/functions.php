@@ -525,4 +525,97 @@ function require_admin_login() {
         redirect('index.php');
     }
 }
+
+// Live Trading Functions
+function get_trading_instruments() {
+    global $db;
+    return $db->select("SELECT * FROM trading_instruments WHERE is_active = 1 ORDER BY category, name");
+}
+
+function get_instrument_by_symbol($symbol) {
+    global $db;
+    return $db->selectOne("SELECT * FROM trading_instruments WHERE symbol = ?", [$symbol]);
+}
+
+function place_live_trade($user_id, $instrument_symbol, $trade_type, $volume) {
+    global $db;
+
+    $instrument = get_instrument_by_symbol($instrument_symbol);
+    if (!$instrument) {
+        return ['success' => false, 'message' => 'Invalid trading instrument.'];
+    }
+
+    // This is a simplified calculation. A real system would get the live price.
+    $open_price = get_market_data_by_symbol($instrument_symbol)['price'] ?? 0;
+    if ($open_price <= 0) {
+        return ['success' => false, 'message' => 'Could not retrieve a valid market price to open the trade.'];
+    }
+
+    $db->beginTransaction();
+    try {
+        // Insert the new trade
+        $trade_id = $db->insert(
+            "INSERT INTO live_trades (user_id, instrument, trade_type, volume, open_price, status) VALUES (?, ?, ?, ?, ?, 'OPEN')",
+            [$user_id, $instrument_symbol, $trade_type, $volume, $open_price]
+        );
+
+        // Create a corresponding transaction record
+        $transaction_id = generate_transaction_id('TRADE');
+        $description = "Opened $trade_type trade for $volume lots of $instrument_symbol at $open_price";
+        $db->insert(
+            "INSERT INTO transactions (user_id, transaction_id, type, amount, description, status) VALUES (?, ?, 'TRADE', ?, ?, 'COMPLETED')",
+            [$user_id, $transaction_id, 0, $description] // Amount is 0 as it's a trade record, not a balance change
+        );
+
+        $db->commit();
+        return ['success' => true, 'trade_id' => $trade_id];
+    } catch (Exception $e) {
+        $db->rollback();
+        // In a real app, you would log the error: error_log($e->getMessage());
+        return ['success' => false, 'message' => 'An error occurred while placing the trade. Please try again.'];
+    }
+}
+
+function get_market_data_by_symbol($symbol) {
+    global $db;
+    return $db->selectOne("SELECT * FROM market_data WHERE symbol = ?", [$symbol]);
+}
+
+// Enhanced trade history function
+function get_detailed_trade_history($user_id, $filters = []) {
+    global $db;
+
+    $where_conditions = ['lt.user_id = ?'];
+    $params = [$user_id];
+
+    // Add filter conditions if any
+    if (!empty($filters['instrument'])) {
+        $where_conditions[] = 'lt.instrument = ?';
+        $params[] = $filters['instrument'];
+    }
+
+    if (!empty($filters['date_from'])) {
+        $where_conditions[] = 'lt.opened_at >= ?';
+        $params[] = $filters['date_from'];
+    }
+
+    $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
+
+    return $db->select("
+        SELECT
+            lt.*,
+            ti.name as instrument_name,
+            ti.category,
+            CASE
+                WHEN lt.profit_loss > 0 THEN 'PROFIT'
+                WHEN lt.profit_loss < 0 THEN 'LOSS'
+                ELSE 'BREAKEVEN'
+            END as trade_result,
+            TIMESTAMPDIFF(MINUTE, lt.opened_at, lt.closed_at) as duration_minutes
+        FROM live_trades lt
+        LEFT JOIN trading_instruments ti ON lt.instrument = ti.symbol
+        $where_clause
+        ORDER BY lt.opened_at DESC
+    ", $params);
+}
 ?>
